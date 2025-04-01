@@ -3,7 +3,9 @@ A Next.js and Python calendar tool that syncs with CalDAV server and exports eve
 
 ## Context
 If you have a CalDAV server and would like to sync events to Google Calendar or others for streamlined calendar management, you don't have many choices - iOS/macOS support CalDAV but only for local usage; DAVx5 requires you to keep running an Android application.
+
 For jobs like scheduled calendar event synchronization, something that can be run on the server would be the ideal solution. This project provides a server-side solution for syncing between CalDAV servers and ICS format, which can then be imported to various calendar services.
+
 This tool can be easily deployed to cloud platforms like Vercel, or you can containerize it with Docker for deployment on your home server.
 
 ## Usage
@@ -21,7 +23,7 @@ For Lark/Feishu calendar users, you can retrieve CalDAV server details from the 
 
 ## Run Locally
 
-- Clone this repo.
+- Clone this repo
 - Add local environment variables by copying the `.env.example` file and enter values:
  
 | Variable | Description |
@@ -56,14 +58,14 @@ Open [http://localhost:3000](http://localhost:3000) in your browser to see the r
 The Flask servers will provide API on `http://127.0.0.1:5328/api/sync` – feel free to change the port in `package.json` (you'll also need to update it in `next.config.js`).
 
 ## Deploy to Vercel
-- Clone this repo and deploy on Vercel.
-- Enable and connect Vercel Blob, create ICS file in the Blob.
-- Add Environment Variables in project settings: `BLOB_PATH`, `CALDAV_URL`, `CALDAV_USERNAME` and `CALDAV_PASSWORD`.
-- Re-deploy and visit project domain to see the result.
+- Clone this repo and deploy on Vercel
+- Enable and connect Vercel Blob, create ICS file in the Blob
+- Add Environment Variables in project settings: `BLOB_PATH`, `CALDAV_URL`, `CALDAV_USERNAME` and `CALDAV_PASSWORD`
+- Re-deploy and visit project domain to see the result
 
 ## Tech Stack
-- Next.js as the frontend.
-- Python/Flask server hosted as [Python serverless functions](https://vercel.com/docs/concepts/functions/serverless-functions/runtimes/python), as the backend API.
+- Next.js as the frontend
+- Python/Flask server hosted as [Python serverless functions](https://vercel.com/docs/concepts/functions/serverless-functions/runtimes/python), as the backend API
 - Python packages:
   - [caldav](https://github.com/python-caldav/caldav): Connect and get events from CalDAV server.
   - [icalendar](https://github.com/collective/icalendar): Process ICS format.
@@ -71,4 +73,4 @@ The Flask servers will provide API on `http://127.0.0.1:5328/api/sync` – feel 
 ## Acknowledgements
 - https://xuanwo.io/reports/2023-35/
 - https://jia.je/software/2025/02/04/feishu-dump-calendar/
-- https://github.com/python-caldav/caldav/issues/459 - for fixing caldav's compatibility issue with Lark/Feishu's CalDAV server.
+- https://github.com/python-caldav/caldav/issues/459 - for fixing caldav's compatibility issue with Lark/Feishu's CalDAV server
