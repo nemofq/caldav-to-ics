@@ -21,7 +21,7 @@ The tool allows you to:
 ![Screenshot of User Interface](https://github.com/user-attachments/assets/9bf0945d-006d-4fe4-b16c-c979358753fd)
 
 ### Example
-For Lark/Feishu calendar users, you can retrieve CalDAV server details from the desktop application and use this tool to create an ICS file that you can then subscribe to in Google Calendar.
+For Lark/Feishu calendar users, you can retrieve CalDAV server details from settings of desktop application and use this tool to create an ICS file that you can then subscribe to in Google Calendar.
 
 ## Run Locally
 
