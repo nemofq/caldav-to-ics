@@ -42,13 +42,21 @@ export default function ClientHome({ initialLastModified }) {
       flexDirection: 'column',
       justifyContent: 'center',
       alignItems: 'center',
-      height: '100vh',
-      width: '100vw',
+      minHeight: '100vh',
+      minHeight: '100dvh',
+      width: '100%',
       margin: 0,
       padding: '2rem',
       gap: '1.5rem',
       backgroundColor: '#fff',
+      boxSizing: 'border-box',
     }}>
+      <h1 style={{
+        fontSize: '2rem',
+        fontWeight: 700,
+        color: '#333',
+        margin: 0,
+      }}>CalDAV to ICS</h1>
       <p style={{
         fontSize: '1.1rem',
         color: '#333',

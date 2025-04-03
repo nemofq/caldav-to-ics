@@ -80,7 +80,7 @@ def sync_caldav_to_blob():
     }
 
 # Handler for Vercel Serverless function
-@app.route("/api/sync", methods=['POST'])
+@app.route("/api/sync", methods=['POST', 'GET'])
 def api_sync():
     try:
         result = sync_caldav_to_blob()
