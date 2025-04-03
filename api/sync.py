@@ -71,6 +71,7 @@ def sync_caldav_to_blob():
     # Upload to Vercel Blob
     result = vercel_blob.put(blob_path, ical_data, {
                 "addRandomSuffix": "false",
+                "cacheControlMaxAge": "0"
             })
     
     return {
