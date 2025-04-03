@@ -18,6 +18,8 @@ The tool allows you to:
 - Scheduled synchronization (currently runs once per day due to Vercel free tier limitations, configurable in `vercel.json`)
 - A simple interface to check last sync time and trigger manual synchronization
 
+![Screenshot of User Interface](https://github.com/user-attachments/assets/f1167fd2-4fd4-4b4d-87c6-1adc142a0ba2)
+
 ### Example
 For Lark/Feishu calendar users, you can retrieve CalDAV server details from the desktop application and use this tool to create an ICS file that you can then subscribe to in Google Calendar.
 
