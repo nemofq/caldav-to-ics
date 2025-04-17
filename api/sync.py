@@ -4,7 +4,6 @@ from caldav import DAVClient
 from icalendar import Calendar
 import vercel_blob
 from flask import Flask, jsonify
-from datetime import datetime
 
 app = Flask(__name__)
 
@@ -76,8 +75,7 @@ def sync_caldav_to_blob():
     
     return {
         "status": "success",
-        "message": f"Successfully synchronized {event_count} events from {calendar_count} calendars",
-        "lastModified": datetime.now().isoformat()
+        "message": f"Successfully synchronized {event_count} events from {calendar_count} calendars"
     }
 
 # Handler for Vercel Serverless function

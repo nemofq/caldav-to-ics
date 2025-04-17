@@ -1,12 +1,13 @@
 'use client';
 import { useState } from 'react';
+import { useRouter } from 'next/navigation';
 import { getRelativeTimeString } from './utils';
 
-export default function ClientHome({ initialLastModified }) {
-  const [lastModified, setLastModified] = useState(initialLastModified);
+export default function ClientHome({ lastModified }) {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState(null);
   const [isSynced, setIsSynced] = useState(false);
+  const router = useRouter();
 
   const handleSync = async () => {
     setIsLoading(true);
@@ -24,9 +25,9 @@ export default function ClientHome({ initialLastModified }) {
         throw new Error(data.message || 'Failed to sync');
       }
       
-      // Use the timestamp from server response
-      setLastModified(data.lastModified);
       setIsSynced(true);
+      router.refresh();
+
     } catch (err) {
       setError(err.message);
     } finally {
