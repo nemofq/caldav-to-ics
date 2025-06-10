@@ -18,7 +18,7 @@
     "concurrently": "^9.1.2",
     "@vercel/blob": "^1.1.1"
   },
-  "packageManager": "pnpm@10.11.0",
+  "packageManager": "pnpm@10.12.1",
   "pnpm": {
     "ignoredBuiltDependencies": ["sharp"]
   }
