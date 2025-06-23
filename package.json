@@ -15,10 +15,10 @@
     "react": "^19.1.0",
     "react-dom": "^19.1.0",
     "sharp": "^0.34.2",
-    "concurrently": "^9.1.2",
+    "concurrently": "^9.2.0",
     "@vercel/blob": "^1.1.1"
   },
-  "packageManager": "pnpm@10.12.1",
+  "packageManager": "pnpm@10.12.2",
   "pnpm": {
     "ignoredBuiltDependencies": ["sharp"]
   }
