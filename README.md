@@ -63,6 +63,7 @@ The Flask servers will provide API on `http://127.0.0.1:5328/api/sync` – feel 
 - Clone this repo and deploy on Vercel
 - Enable and connect Vercel Blob, create ICS file in the Blob
 - Add Environment Variables in project settings: `BLOB_PATH`, `CALDAV_URL`, `CALDAV_USERNAME` and `CALDAV_PASSWORD`
+- Enable 'Fluid Compute' in the 'Functions' section of project settings to receive up to 300s of max duration for syncing larger calendars
 - Re-deploy and visit project domain to see the result
 
 ## Tech Stack
