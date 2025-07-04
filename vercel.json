@@ -1,9 +1,4 @@
 {
-  "functions": {
-    "api/*.py": {
-      "maxDuration": 60
-    }
-  },
   "crons": [
     {
       "path": "/api/sync",
