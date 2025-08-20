@@ -1,9 +1,5 @@
 python-dotenv>=1.1.1
-Flask>=3.1.1
+Flask>=3.1.2
 vercel_blob>=0.4.2
 icalendar>=6.3.1
-# Using a specific version to fix compatibility issues between caldav and Lark/Feishu CalDAV Server
-# See: https://github.com/python-caldav/caldav/issues/459
-git+https://github.com/python-caldav/caldav.git@835ef397a099327a95b86520ce941e0713205f6f
-# If you are not Feishu/Lark user, you can use latest version instead
-# caldav>=1.5.0
+caldav>=2.0.1
