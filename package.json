@@ -12,8 +12,8 @@
   },
   "dependencies": {
     "next": "^15.5.4",
-    "react": "^19.1.1",
-    "react-dom": "^19.1.1",
+    "react": "^19.2.0",
+    "react-dom": "^19.2.0",
     "sharp": "^0.34.4",
     "concurrently": "^9.2.1",
     "@vercel/blob": "^2.0.0"
