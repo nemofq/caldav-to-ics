@@ -1,4 +1,4 @@
-python-dotenv>=1.1.1
+python-dotenv>=1.2.1
 Flask>=3.1.2
 vercel_blob>=0.4.2
 icalendar>=6.3.1
