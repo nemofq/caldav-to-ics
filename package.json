@@ -11,14 +11,14 @@
     "lint": "next lint"
   },
   "dependencies": {
-    "next": "^16.0.10",
+    "next": "^16.1.0",
     "react": "^19.2.3",
     "react-dom": "^19.2.3",
     "sharp": "^0.34.5",
     "concurrently": "^9.2.1",
     "@vercel/blob": "^2.0.0"
   },
-  "packageManager": "pnpm@10.26.0",
+  "packageManager": "pnpm@10.26.1",
   "pnpm": {
     "ignoredBuiltDependencies": ["sharp"]
   }
