@@ -2,7 +2,7 @@ import os
 from dotenv import load_dotenv
 from caldav import DAVClient
 from icalendar import Calendar
-import vercel_blob
+from vercel.blob import BlobClient
 from flask import Flask, jsonify
 
 app = Flask(__name__)
@@ -68,11 +68,15 @@ def sync_caldav_to_blob():
     ical_data = combined_calendar.to_ical()
     
     # Upload to Vercel Blob
-    result = vercel_blob.put(blob_path, ical_data, {
-                "addRandomSuffix": "false",
-                "cacheControlMaxAge": "0",
-                "allowOverwrite": "true"
-            })
+    client = BlobClient()
+    result = client.put(
+        blob_path,
+        ical_data,
+        access="public",
+        add_random_suffix=False,
+        cache_control_max_age=0,
+        overwrite=True,
+    )
     
     return {
         "status": "success",
