@@ -3,7 +3,7 @@
   "version": "1.0.0",
   "private": true,
   "scripts": {
-    "flask-dev": ". venv/bin/activate && FLASK_DEBUG=1 pip3 install -r requirements.txt && concurrently \"python3 -m flask --app api/sync run -p 5328\"",
+    "flask-dev": "uv venv --quiet 2>/dev/null; uv pip install -r requirements.txt && FLASK_DEBUG=1 uv run python -m flask --app api/sync run -p 5328",
     "next-dev": "next dev",
     "dev": "concurrently \"pnpm run next-dev\" \"pnpm run flask-dev\"",
     "build": "next build",

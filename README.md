@@ -36,17 +36,10 @@ For Lark/Feishu calendar users, you can retrieve CalDAV server details from sett
  | `CALDAV_USERNAME` | CalDAV server username |
  | `CALDAV_PASSWORD` | CalDAV server password |
 
+- Install [uv](https://docs.astral.sh/uv/getting-started/installation/) for Python dependency management
 - Install the dependencies:
-
 ```bash
 pnpm install
-```
-
-- Virtual Python environment if needed:
-
-```bash
-python3 -m venv venv
-source venv/bin/activate
 ```
 
 - Run the development server:
