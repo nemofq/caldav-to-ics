@@ -1,19 +1,13 @@
-# dependencies
+# Dependencies
 /node_modules
-pnpm-lock.yaml
-
-# next.js
 /.next/
-
-# python
+/.venv
 /api/__pycache__/
 
-# debug
-pnpm-debug.log*
-
-# local env files
+# Config
 .env*.local
-/.venv
-
-# vercel
 .vercel
+
+# Logs
+pnpm-lock.yaml
+pnpm-debug.log*
