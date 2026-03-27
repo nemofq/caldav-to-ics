@@ -11,51 +11,63 @@ app = Flask(__name__)
 load_dotenv('.env.local')
 
 def sync_caldav_to_blob():
-    
+
     # Read configuration from environment variables
     caldav_url = os.environ.get("CALDAV_URL")
     caldav_username = os.environ.get("CALDAV_USERNAME")
     caldav_password = os.environ.get("CALDAV_PASSWORD")
     blob_path = os.environ.get("BLOB_PATH")
-    
+
     # Validate BLOB_PATH is provided
     if not blob_path:
         raise ValueError("Missing required environment variable: BLOB_PATH")
-    
+
     # Validate required environment variables
     if not all([caldav_url, caldav_username, caldav_password]):
         raise ValueError("Missing required environment variables: CALDAV_URL, CALDAV_USERNAME, CALDAV_PASSWORD")
-    
+
     # Connect to CalDAV server
     client = DAVClient(
         url=caldav_url,
         username=caldav_username,
         password=caldav_password
     )
-    
+
     # Get all calendars
     calendars = client.principal().calendars()
-    
+
     # Create an integrated iCalendar
     combined_calendar = Calendar()
     combined_calendar.add('prodid', '-//CalDAV to ICS//EN')
     combined_calendar.add('version', '2.0')
     combined_calendar.add('calscale', 'GREGORIAN')
     combined_calendar.add('method', 'PUBLISH')
-    
+
     # Collect all events from all calendars
     event_count = 0
     calendar_count = len(calendars)
-    
+
     for calendar in calendars:
         try:
-            # Get all events from this calendar
-            events = calendar.events()
-            
+            # Use objects() instead of events() — caldav 3.x events() uses
+            # REPORT which some servers (e.g. Feishu) don't support properly
+            events = calendar.objects()
+
             for event in events:
+                # caldav 3.x returns lazy stubs — explicitly fetch data
+                # Wrap in try/except to skip 404s (ghost entries on server)
+                try:
+                    if not event.data:
+                        event.load()
+                except Exception:
+                    continue
+
                 event_data = event.data
+                if not event_data:
+                    continue
+
                 cal = Calendar.from_ical(event_data)
-                
+
                 # Only add VEVENT components to the integrated calendar
                 for component in cal.walk():
                     if component.name == 'VEVENT':
@@ -63,10 +75,10 @@ def sync_caldav_to_blob():
                         event_count += 1
         except Exception as e:
             print(f"Error processing calendar {calendar.name}: {str(e)}")
-    
+
     # Convert the integrated calendar to iCalendar data
     ical_data = combined_calendar.to_ical()
-    
+
     # Upload to Vercel Blob
     client = BlobClient()
     result = client.put(
@@ -77,7 +89,7 @@ def sync_caldav_to_blob():
         cache_control_max_age=0,
         overwrite=True,
     )
-    
+
     return {
         "status": "success",
         "message": f"Successfully synchronized {event_count} events from {calendar_count} calendars"
