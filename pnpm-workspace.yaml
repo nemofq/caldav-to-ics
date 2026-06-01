@@ -1,4 +1,2 @@
 allowBuilds:
   sharp: true
-minimumReleaseAgeExclude:
-  - '@vercel/blob@2.4.0'
