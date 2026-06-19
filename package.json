@@ -14,9 +14,9 @@
     "next": "^16.2.9",
     "react": "^19.2.7",
     "react-dom": "^19.2.7",
-    "sharp": "^0.35.1",
+    "sharp": "^0.35.2",
     "concurrently": "^10.0.3",
-    "@vercel/blob": "^2.4.0"
+    "@vercel/blob": "^2.4.1"
   },
-  "packageManager": "pnpm@11.7.0"
+  "packageManager": "pnpm@11.8.0"
 }
