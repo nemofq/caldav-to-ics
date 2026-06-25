@@ -16,7 +16,7 @@
     "react-dom": "^19.2.7",
     "sharp": "^0.35.2",
     "concurrently": "^10.0.3",
-    "@vercel/blob": "^2.4.1"
+    "@vercel/blob": "^2.5.0"
   },
-  "packageManager": "pnpm@11.8.0"
+  "packageManager": "pnpm@11.9.0"
 }
