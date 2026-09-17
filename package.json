@@ -11,12 +11,12 @@
     "lint": "next lint"
   },
   "dependencies": {
-    "next": "^16.3.0",
-    "react": "^19.2.8",
-    "react-dom": "^19.2.8",
-    "sharp": "^0.35.3",
-    "concurrently": "^10.0.4",
-    "@vercel/blob": "^2.6.1"
+    "@vercel/blob": "^2.8.0",
+    "concurrently": "^10.0.5",
+    "next": "^16.3.5",
+    "react": "^19.3.0",
+    "react-dom": "^19.3.0",
+    "sharp": "^0.35.4"
   },
-  "packageManager": "pnpm@11.20.0"
+  "packageManager": "pnpm@12.4.2"
 }
