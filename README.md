@@ -14,7 +14,7 @@ The tool allows you to:
 - Export events to ICS format
 - Upload/update to an ICS file on cloud storage (Vercel Blob in current code)
 - Get a URL to the ICS file and subscribe to it in Google Calendar or use scripts like [GAS-ICS-Sync](https://github.com/derekantrican/GAS-ICS-Sync)
-> *Note: For security reasons, you need to get the URL from cloud storage manually.*
+> *Note: The ICS URL is printed to the Vercel function logs after each sync. You can also copy it from the Blob store.*
 - Scheduled synchronization (currently runs once per day due to Vercel free tier limitations, configurable in `vercel.json`)
 - A simple interface to check last sync time and trigger manual synchronization
 
@@ -31,10 +31,16 @@ For Lark/Feishu calendar users, you can retrieve CalDAV server details from sett
 | Variable | Description |
  |--------|------|
  | `BLOB_READ_WRITE_TOKEN` | Your Vercel Blob token |
- | `BLOB_PATH` | Path to the ICS file on your Vercel Blob |
+ | `BLOB_PATH` | Filename for the ICS file on your Vercel Blob (see below) |
  | `CALDAV_URL` | CalDAV server url |
  | `CALDAV_USERNAME` | CalDAV server username |
  | `CALDAV_PASSWORD` | CalDAV server password |
+
+The blob URL is public, so `BLOB_PATH` should be unguessable. Generate one and use the same value locally and on Vercel:
+
+```bash
+echo "calendar-$(openssl rand -hex 16).ics"
+```
 
 - Install [uv](https://docs.astral.sh/uv/getting-started/installation/) for Python dependency management
 - Install the dependencies:
@@ -54,8 +60,8 @@ The Flask servers will provide API on `http://127.0.0.1:5328/api/sync` – feel 
 
 ## Deploy to Vercel
 - Clone this repo and deploy on Vercel
-- Enable and connect Vercel Blob, create ICS file in the Blob
-- Add Environment Variables in project settings: `BLOB_PATH`, `CALDAV_URL`, `CALDAV_USERNAME` and `CALDAV_PASSWORD`
+- Create a Blob store and connect it to the project — keep the 'Add a read-write token env var to this connection' option checked, so `BLOB_READ_WRITE_TOKEN` is set for you
+- Add Environment Variables in project settings: `BLOB_PATH` (the same value you generated above), `CALDAV_URL`, `CALDAV_USERNAME` and `CALDAV_PASSWORD`
 - Enable 'Fluid Compute' in the 'Functions' section of project settings to receive up to 300s of max duration for syncing larger calendars
 - Re-deploy and visit project domain to see the result
 
