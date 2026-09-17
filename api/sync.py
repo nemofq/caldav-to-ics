@@ -2,7 +2,7 @@ import os
 from dotenv import load_dotenv
 from caldav import DAVClient
 from icalendar import Calendar
-from vercel.blob import BlobClient
+from vercel.blob import put
 from flask import Flask, jsonify
 
 app = Flask(__name__)
@@ -79,16 +79,23 @@ def sync_caldav_to_blob():
     # Convert the integrated calendar to iCalendar data
     ical_data = combined_calendar.to_ical()
 
-    # Upload to Vercel Blob
-    client = BlobClient()
-    result = client.put(
+    # Upload to Vercel Blob. The module-level put() opens and closes its own
+    # HTTP transport; a bare BlobClient() would leak one per invocation.
+    uploaded = put(
         blob_path,
         ical_data,
         access="public",
+        content_type="text/calendar; charset=utf-8",
         add_random_suffix=False,
-        cache_control_max_age=0,
+        # 60s is Blob's floor — it clamps anything lower up to this. Required:
+        # omitting it entirely serves max-age=2592000 (30 days).
+        cache_control_max_age=60,
         overwrite=True,
     )
+
+    # Logged, never returned: /api/sync is unauthenticated, so the response
+    # body must not carry the secret ICS URL. Function logs are owner-only.
+    print(f"Uploaded ICS to {uploaded.url}")
 
     return {
         "status": "success",
