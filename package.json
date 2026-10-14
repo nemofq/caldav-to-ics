@@ -8,15 +8,19 @@
     "dev": "concurrently \"pnpm run next-dev\" \"pnpm run flask-dev\"",
     "build": "next build",
     "start": "next start",
-    "lint": "next lint"
+    "lint": "eslint"
   },
   "dependencies": {
-    "@vercel/blob": "^2.8.0",
-    "concurrently": "^10.0.5",
-    "next": "^16.3.5",
+    "@vercel/blob": "^2.8.1",
+    "concurrently": "^10.0.6",
+    "next": "^16.4.0",
     "react": "^19.3.0",
     "react-dom": "^19.3.0",
-    "sharp": "^0.35.4"
+    "sharp": "^0.35.5"
   },
-  "packageManager": "pnpm@12.4.2"
+  "packageManager": "pnpm@12.10.1",
+  "devDependencies": {
+    "eslint": "^9.39.5",
+    "eslint-config-next": "^16.4.0"
+  }
 }

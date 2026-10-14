@@ -1,2 +1,4 @@
 allowBuilds:
   sharp: true
+  unrs-resolver: false
+minimumReleaseAge: 1440

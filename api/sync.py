@@ -76,6 +76,11 @@ def sync_caldav_to_blob():
         except Exception as e:
             print(f"Error processing calendar {calendar.name}: {str(e)}")
 
+    # Only VEVENTs are copied above, so emit a VTIMEZONE for every TZID they
+    # reference. Without these, some clients treat TZID times as floating/UTC,
+    # which breaks EXDATE matching and resurrects deleted occurrences.
+    combined_calendar.add_missing_timezones()
+
     # Convert the integrated calendar to iCalendar data
     ical_data = combined_calendar.to_ical()
 

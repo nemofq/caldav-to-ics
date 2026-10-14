@@ -5,7 +5,8 @@
 /api/__pycache__/
 
 # Config
-.env*.local
+.env*
+!.env.example
 .vercel
 
 # Logs
