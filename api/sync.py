@@ -10,6 +10,37 @@ app = Flask(__name__)
 # load local env
 load_dotenv('.env.local')
 
+def fold_cancelled_overrides(calendar):
+    """Replace cancelled recurrence overrides with EXDATEs on their masters.
+
+    Feishu deletes a previously edited occurrence by marking its override
+    (RECURRENCE-ID) STATUS:CANCELLED, without adding an EXDATE to the master.
+    That's valid iCalendar, but consumers such as GAS-ICS-Sync drop cancelled
+    events outright, which resurrects the occurrence from the RRULE. EXDATE
+    is the form every consumer understands. Returns the number folded.
+    """
+    vevents = [c for c in calendar.subcomponents if c.name == 'VEVENT']
+    masters = {}
+    for component in vevents:
+        if 'RECURRENCE-ID' not in component:
+            masters.setdefault(str(component.get('UID')), []).append(component)
+
+    folded = 0
+    for component in vevents:
+        if ('RECURRENCE-ID' not in component
+                or str(component.get('STATUS', '')).upper() != 'CANCELLED'):
+            continue
+        uid_masters = masters.get(str(component.get('UID')))
+        if not uid_masters:
+            continue
+        for master in uid_masters:
+            # Same value type and TZID as the RECURRENCE-ID, so it matches the
+            # instance the RRULE generates
+            master.add('EXDATE', component['RECURRENCE-ID'].dt)
+        calendar.subcomponents.remove(component)
+        folded += 1
+    return folded
+
 def sync_caldav_to_blob():
 
     # Read configuration from environment variables
@@ -75,6 +106,8 @@ def sync_caldav_to_blob():
                         event_count += 1
         except Exception as e:
             print(f"Error processing calendar {calendar.name}: {str(e)}")
+
+    event_count -= fold_cancelled_overrides(combined_calendar)
 
     # Only VEVENTs are copied above, so emit a VTIMEZONE for every TZID they
     # reference. Without these, some clients treat TZID times as floating/UTC,
