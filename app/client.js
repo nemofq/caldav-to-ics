@@ -19,10 +19,12 @@ export default function ClientHome({ lastModified }) {
         method: 'POST',
       });
       
-      const data = await response.json();
-      
+      // A crashed function returns Vercel's HTML error page, not JSON
+      const isJson = response.headers.get('content-type')?.includes('application/json');
+      const data = isJson ? await response.json() : null;
+
       if (!response.ok) {
-        throw new Error(data.message || 'Failed to sync');
+        throw new Error(data?.message || `HTTP ${response.status}`);
       }
       
       setIsSynced(true);
