@@ -1,0 +1,54 @@
+name: CI
+
+on:
+  pull_request:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+jobs:
+  check:
+    name: Install, lint, build, test
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    env:
+      NEXT_TELEMETRY_DISABLED: "1"
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      # Node major matches the Vercel project setting
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: 24
+
+      # pnpm version comes from packageManager in package.json, as on Vercel
+      - name: Enable Corepack
+        run: corepack enable
+
+      - name: Install JS dependencies
+        run: pnpm install
+
+      - name: Lint
+        run: pnpm run lint
+
+      - name: Build
+        run: pnpm run build
+
+      - uses: astral-sh/setup-uv@68559e99cc807c1eb7e9238fd43a15bba460eec2 # v10.3.3
+
+      # Python 3.12 is Vercel's default runtime. Only versions published at
+      # least one day ago, matching the pnpm minimumReleaseAge gate.
+      - name: Install Python dependencies
+        run: |
+          uv venv --python 3.12
+          uv pip install --exclude-newer "$(date -u -d '1 day ago' +%Y-%m-%dT%H:%M:%SZ)" -r requirements-dev.txt
+
+      # Tests use fake credentials and mocks; no secrets are available here
+      - name: Test
+        run: .venv/bin/python -m pytest
