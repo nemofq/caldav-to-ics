@@ -1,0 +1,9 @@
+BEGIN:VCALENDAR
+VERSION:2.0
+PRODID:-//Fixture//Feishu-like//EN
+BEGIN:VTODO
+UID:todo@example.invalid
+DTSTAMP:20261001T000000Z
+SUMMARY:A task, not an event
+END:VTODO
+END:VCALENDAR
