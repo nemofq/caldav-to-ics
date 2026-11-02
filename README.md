@@ -35,11 +35,18 @@ For Lark/Feishu calendar users, you can retrieve CalDAV server details from sett
  | `CALDAV_URL` | CalDAV server url |
  | `CALDAV_USERNAME` | CalDAV server username |
  | `CALDAV_PASSWORD` | CalDAV server password |
+ | `CRON_SECRET` | Optional. If set, `/api/sync` only accepts requests with `Authorization: Bearer <CRON_SECRET>` (see below) |
 
 The blob URL is public, so `BLOB_PATH` should be unguessable. Generate one and use the same value locally and on Vercel:
 
 ```bash
 echo "calendar-$(openssl rand -hex 16).ics"
+```
+
+`CRON_SECRET` is optional. Without it, anyone who knows your deployment URL can trigger a sync. With it, `/api/sync` returns 401 unless the request carries the secret: Vercel Cron sends it automatically, and the Sync Now button asks for it. Generate one with:
+
+```bash
+openssl rand -hex 32
 ```
 
 - Install [uv](https://docs.astral.sh/uv/getting-started/installation/) for Python dependency management
@@ -62,6 +69,7 @@ The Flask servers will provide API on `http://127.0.0.1:5328/api/sync` – feel 
 - Clone this repo and deploy on Vercel
 - Create a Blob store and connect it to the project — keep the 'Add a read-write token env var to this connection' option checked, so `BLOB_READ_WRITE_TOKEN` is set for you
 - Add Environment Variables in project settings: `BLOB_PATH` (the same value you generated above), `CALDAV_URL`, `CALDAV_USERNAME` and `CALDAV_PASSWORD`
+- Optionally add `CRON_SECRET` (recommended) to stop others from triggering syncs; the daily cron keeps working because Vercel sends it automatically
 - Enable 'Fluid Compute' in the 'Functions' section of project settings to receive up to 300s of max duration for syncing larger calendars
 - Re-deploy and visit project domain to see the result
 

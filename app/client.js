@@ -14,11 +14,22 @@ export default function ClientHome({ lastModified }) {
     setError(null);
     setIsSynced(false);
 
+    const requestSync = (secret) => fetch('/api/sync', {
+      method: 'POST',
+      headers: secret ? { Authorization: `Bearer ${secret}` } : {},
+    });
+
     try {
-      const response = await fetch('/api/sync', {
-        method: 'POST',
-      });
-      
+      let response = await requestSync();
+
+      // With CRON_SECRET set, /api/sync rejects unauthenticated requests.
+      // Ask for the secret and retry; it is never stored.
+      if (response.status === 401) {
+        const secret = window.prompt('Enter CRON_SECRET to sync');
+        if (!secret) return;
+        response = await requestSync(secret);
+      }
+
       // A crashed function returns Vercel's HTML error page, not JSON
       const isJson = response.headers.get('content-type')?.includes('application/json');
       const data = isJson ? await response.json() : null;
