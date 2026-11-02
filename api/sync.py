@@ -1,9 +1,10 @@
+import hmac
 import os
 from dotenv import load_dotenv
 from caldav import DAVClient
 from icalendar import Calendar
 from vercel.blob.sync import put_blob
-from flask import Flask, jsonify
+from flask import Flask, jsonify, request
 
 app = Flask(__name__)
 
@@ -140,9 +141,31 @@ def sync_caldav_to_blob():
         "message": f"Successfully synchronized {event_count} events from {calendar_count} calendars"
     }
 
+def is_authorized(req):
+    """Check the request against CRON_SECRET, if one is configured.
+
+    Without CRON_SECRET anyone can trigger a sync, as before. With it, the
+    request must carry "Authorization: Bearer <CRON_SECRET>", which Vercel
+    cron sends automatically when the variable is set on the project.
+    """
+    secret = os.environ.get("CRON_SECRET")
+    if not secret:
+        return True
+    expected = f"Bearer {secret}".encode()
+    provided = req.headers.get("Authorization", "").encode()
+    # Constant-time; bytes so a non-ASCII header is a mismatch, not an error
+    return hmac.compare_digest(provided, expected)
+
 # Handler for Vercel Serverless function
 @app.route("/api/sync", methods=['POST', 'GET'])
 def api_sync():
+    # Checked before anything else: an unauthorized request must not sync
+    if not is_authorized(request):
+        return jsonify({
+            "status": "error",
+            "message": "Unauthorized"
+        }), 401
+
     try:
         result = sync_caldav_to_blob()
         return jsonify(result), 200
