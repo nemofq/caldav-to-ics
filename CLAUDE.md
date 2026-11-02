@@ -50,7 +50,9 @@ requests.
   a 30-day cache.
 - `CRON_SECRET` is optional and both modes must keep working: unset (or empty) means
   `/api/sync` is open; set means it requires `Authorization: Bearer <CRON_SECRET>`, which
-  Vercel cron sends automatically, and the Sync Now button prompts for it on a 401.
+  Vercel cron sends automatically. The page then shows Sync Now as a password form
+  (`current-password` plus a hidden `username` field) so browsers can save and autofill
+  the secret; it is never stored by the app itself.
 - **pnpm only, never npm.** Only use dependency versions published at least one day ago
   (`minimumReleaseAge` in `pnpm-workspace.yaml`, `min-release-age` in `.npmrc`; for Python,
   check the PyPI upload date before raising a lower bound).

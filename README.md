@@ -43,7 +43,7 @@ The blob URL is public, so `BLOB_PATH` should be unguessable. Generate one and u
 echo "calendar-$(openssl rand -hex 16).ics"
 ```
 
-`CRON_SECRET` is optional. Without it, anyone who knows your deployment URL can trigger a sync. With it, `/api/sync` returns 401 unless the request carries the secret: Vercel Cron sends it automatically, and the Sync Now button asks for it. Generate one with:
+`CRON_SECRET` is optional. Without it, anyone who knows your deployment URL can trigger a sync. With it, `/api/sync` returns 401 unless the request carries the secret: Vercel Cron sends it automatically, and the page asks for it in a password field next to Sync Now, which your browser's password manager can save and autofill. Generate one with:
 
 ```bash
 openssl rand -hex 32
