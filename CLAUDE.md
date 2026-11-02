@@ -21,9 +21,13 @@ pnpm install
 pnpm run lint
 pnpm run build
 pnpm run dev   # Next.js on :3000 and Flask on :5328 (needs uv)
+uv venv && uv pip install -r requirements-dev.txt
+.venv/bin/python -m pytest
 ```
 
-There are no tests or CI in this repo by design.
+The pytest suite in `tests/` runs offline: fake credentials, mocked CalDAV and Blob,
+sockets disabled. CI (`.github/workflows/ci.yml`) runs lint, build and tests on pull
+requests.
 
 ## Rules
 
@@ -52,13 +56,6 @@ There are no tests or CI in this repo by design.
   check the PyPI upload date before raising a lower bound).
 - **Python deps: `uv pip install -r requirements.txt`**, never `uv pip sync`: the file isn't
   a lockfile, so sync strips transitive dependencies.
-
-## Relationship with the deployment repo
-
-- A private deployment repo with an unrelated git history shares `api/` and `app/` with
-  this one byte for byte. Changes move between them as patches (`git diff` /
-  `git format-patch` then `git apply`), never cherry-picks, so keep both directories generic.
-- Tests and CI live in the deployment repo.
 
 ## Workflow
 
