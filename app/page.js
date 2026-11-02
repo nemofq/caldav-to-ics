@@ -14,5 +14,8 @@ export default async function Home() {
     // Store unreachable or unconfigured — render "Never" rather than crash
   }
 
-  return <ClientHome lastModified={timestamp} />;
+  // Only whether a secret is required reaches the browser, never its value
+  const authRequired = Boolean(process.env.CRON_SECRET);
+
+  return <ClientHome lastModified={timestamp} authRequired={authRequired} />;
 }
