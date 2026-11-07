@@ -55,7 +55,9 @@ requests.
   the secret; it is never stored by the app itself.
 - **pnpm only, never npm.** Only use dependency versions published at least one day ago
   (`minimumReleaseAge` in `pnpm-workspace.yaml`, `min-release-age` in `.npmrc`; for Python,
-  check the PyPI upload date before raising a lower bound).
+  check the PyPI upload date before raising a lower bound). `pnpm-lock.yaml` is gitignored,
+  so installs resolve the newest versions allowed by the `package.json` ranges. ESLint stays
+  on v9: `.ncurc.json` rejects `eslint` upgrades.
 - **Python deps: `uv pip install -r requirements.txt`**, never `uv pip sync`: the file isn't
   a lockfile, so sync strips transitive dependencies.
 
