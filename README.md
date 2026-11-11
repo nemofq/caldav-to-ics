@@ -17,6 +17,8 @@ The tool allows you to:
 > *Note: The ICS URL is printed to the Vercel function logs after each sync. You can also copy it from the Blob store.*
 - Scheduled synchronization (currently runs once per day due to Vercel free tier limitations, configurable in `vercel.json`)
 - A simple interface to check last sync time and trigger manual synchronization
+- Records the result of every sync attempt in a small status file next to the ICS (`<BLOB_PATH>.status.json`: time, success or a short error reason, never URLs or calendar data), so the page can show a failed or missed run after the function logs have expired
+- If every calendar fails to load (e.g. the server times out), the sync fails instead of replacing the ICS with an empty one
 
 ![Screenshot of User Interface](https://github.com/user-attachments/assets/9bf0945d-006d-4fe4-b16c-c979358753fd)
 

@@ -17,7 +17,12 @@ const visuallyHidden = {
   border: 0,
 };
 
-export default function ClientHome({ lastModified, authRequired = false }) {
+export default function ClientHome({
+  lastModified,
+  isOverdue = false,
+  status = null,
+  authRequired = false,
+}) {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState(null);
   const [isSynced, setIsSynced] = useState(false);
@@ -105,6 +110,22 @@ export default function ClientHome({ lastModified, authRequired = false }) {
   const buttonLabel = isLoading ? 'Syncing...' : isSynced ? 'Synced' : 'Sync Now';
 
   const formattedTime = lastModified ? getRelativeTimeString(lastModified) : 'Never';
+  // Ignore a failure older than the last good upload (its status write failed)
+  const lastAttemptFailed = Boolean(status) && !status.ok && !(
+    lastModified && status.attemptedAt && new Date(status.attemptedAt) < new Date(lastModified)
+  );
+
+  let statusNote = null;
+  if (lastAttemptFailed) {
+    const when = status.attemptedAt ? getRelativeTimeString(status.attemptedAt) : 'recently';
+    statusNote = `Last attempt ${when} failed: ${status.error || 'unknown error'}`;
+  } else if (isOverdue) {
+    statusNote = 'No sync attempt since then. Check that the scheduled job ran.';
+  } else if (status?.skippedCalendars > 0) {
+    const n = status.skippedCalendars;
+    statusNote = `${n} calendar${n === 1 ? ' was' : 's were'} skipped on the last sync`;
+  }
+  const statusNoteIsWarning = lastAttemptFailed || isOverdue;
 
   return (
     <main style={{
@@ -129,9 +150,19 @@ export default function ClientHome({ lastModified, authRequired = false }) {
       }}>CalDAV to ICS</h1>
       <p style={{
         fontSize: '1.1rem',
-        color: '#333',
+        color: isOverdue ? '#c00' : '#333',
         fontWeight: 400,
+        margin: 0,
       }}>Last Synced: {formattedTime}</p>
+      {statusNote && (
+        <p style={{
+          fontSize: '0.95rem',
+          color: statusNoteIsWarning ? '#c00' : '#666',
+          margin: 0,
+          maxWidth: '80%',
+          textAlign: 'center',
+        }}>{statusNote}</p>
+      )}
       {showSecretForm ? (
         // method="post" keeps the secret out of the URL if the form is
         // submitted before the page's JavaScript has loaded
