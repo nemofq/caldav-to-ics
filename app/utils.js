@@ -12,3 +12,9 @@ export function getRelativeTimeString(timestamp) {
   if (diffInHours < 24) return `${diffInHours} hours ago`;
   return `${diffInDays} days ago`;
 } 
+// The cron runs daily, so a last sync older than this means a run was missed
+const OVERDUE_MS = 25 * 60 * 60 * 1000;
+
+export function isSyncOverdue(timestamp) {
+  return Date.now() - new Date(timestamp).getTime() > OVERDUE_MS;
+}

@@ -8,8 +8,12 @@ frontend, Python/Flask function as the backend. It must work with any CalDAV ser
 
 - `api/sync.py`: Flask app, deployed as the Vercel Python function `/api/sync`. Fetches
   every CalDAV object, keeps VEVENTs, folds cancelled recurrence overrides into EXDATEs,
-  adds missing VTIMEZONEs and uploads one ICS with `put_blob`.
-- `app/`: Next.js page showing the last sync time (from Blob `list()` metadata) and a
+  adds missing VTIMEZONEs and uploads one ICS with `put_blob`. After every authorized
+  attempt it also writes `<BLOB_PATH>.status.json` (time, ok, short error reason, skipped
+  calendars; never URLs or calendar data). If every calendar fails to load it raises
+  instead of uploading an empty ICS.
+- `app/`: Next.js page showing the last sync time (from Blob `list()` metadata), the last
+  failed attempt or an overdue warning (from the status file, read server-side only), and a
   Sync Now button.
 - `vercel.json`: daily cron (`0 0 * * *`) calling `/api/sync`.
 - `.env.example` and the README "Run Locally" table: every env var the code reads.

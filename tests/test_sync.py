@@ -1,11 +1,13 @@
 """Tests for api/sync.py: cancelled-occurrence folding, VTIMEZONEs and ICS building."""
+import json
+import logging
 from datetime import date
 
 import pytest
 from icalendar import Calendar
 
 import sync
-from conftest import FAKE_ICS_URL
+from conftest import FAKE_ENV, FAKE_ICS_URL
 
 
 def vevents(calendar):
@@ -214,9 +216,23 @@ class TestSyncBuildsIcs:
 
         result = sync.sync_caldav_to_blob()
 
-        assert "Error processing calendar Broken: REPORT not supported" in capsys.readouterr().out
+        assert "Error processing calendar Broken: REPORT not supported" in capsys.readouterr().err
         assert len(vevents(uploaded_calendar(uploads))) == 1
         assert result["message"] == "Successfully synchronized 1 events from 2 calendars"
+        assert result["skipped_calendars"] == 1
+
+    def test_every_calendar_failing_raises_without_uploading(
+        self, caldav_server, fake_calendar, uploads
+    ):
+        caldav_server.calendars_list = [
+            fake_calendar("Work", error=TimeoutError("read timed out")),
+            fake_calendar("Home", error=TimeoutError("read timed out")),
+        ]
+
+        with pytest.raises(sync.SyncError, match=r"All 2 calendars failed to load \(TimeoutError\)"):
+            sync.sync_caldav_to_blob()
+
+        assert uploads == []
 
     def test_empty_server_still_uploads_a_valid_calendar(self, uploads):
         result = sync.sync_caldav_to_blob()
@@ -347,6 +363,15 @@ class TestSyncUpload:
 # --- /api/sync route ----------------------------------------------------------
 
 
+def ics_uploads(uploads):
+    return [call for call in uploads if call["path"] == FAKE_ENV["BLOB_PATH"]]
+
+
+def status_uploads(uploads):
+    path = FAKE_ENV["BLOB_PATH"] + sync.STATUS_SUFFIX
+    return [json.loads(call["data"]) for call in uploads if call["path"] == path]
+
+
 @pytest.fixture
 def client():
     sync.app.config["TESTING"] = True
@@ -363,7 +388,7 @@ class TestSyncRoute:
             "status": "success",
             "message": "Successfully synchronized 0 events from 0 calendars",
         }
-        assert len(uploads) == 1
+        assert len(ics_uploads(uploads)) == 1
 
     def test_error_returns_500_json(self, client, monkeypatch, uploads):
         monkeypatch.delenv("BLOB_PATH")
@@ -383,6 +408,116 @@ class TestSyncRoute:
         assert FAKE_ICS_URL not in response.get_data(as_text=True)
 
 
+# --- /api/sync: status file and failure logging --------------------------------
+
+
+class TestSyncStatus:
+    def test_success_records_ok_status(self, client, uploads):
+        client.get("/api/sync")
+
+        [status] = status_uploads(uploads)
+        assert status["ok"] is True
+        assert status["error"] is None
+        assert status["skipped_calendars"] == 0
+        assert status["attempted_at"]
+
+    def test_status_upload_parameters(self, client, uploads):
+        client.get("/api/sync")
+
+        [call] = [c for c in uploads if c["path"].endswith(sync.STATUS_SUFFIX)]
+        assert call["access"] == "public"
+        assert call["content_type"] == "application/json"
+        assert call["add_random_suffix"] is False
+        assert call["allow_overwrite"] is True
+        assert call["cache_control_max_age"] == 60
+
+    def test_skipped_calendars_are_recorded(
+        self, client, caldav_server, fake_calendar, fake_object, fixture_ics, uploads
+    ):
+        caldav_server.calendars_list = [
+            fake_calendar("Broken", error=Exception("boom")),
+            fake_calendar("Work", [fake_object(fixture_ics("utc_event.ics"))]),
+        ]
+
+        assert client.get("/api/sync").status_code == 200
+
+        [status] = status_uploads(uploads)
+        assert status["ok"] is True
+        assert status["skipped_calendars"] == 1
+
+    def test_failure_records_status_without_details_and_logs_error(
+        self, client, caldav_server, fake_calendar, uploads, capsys
+    ):
+        def refuse():
+            raise ConnectionError("https://caldav.example.invalid/ test-user refused")
+
+        caldav_server.principal = refuse
+
+        response = client.get("/api/sync")
+
+        assert response.status_code == 500
+        assert ics_uploads(uploads) == []
+        [status] = status_uploads(uploads)
+        assert status["ok"] is False
+        # Library messages can carry the CalDAV URL or username: type only
+        assert status["error"] == "ConnectionError"
+        assert "Sync failed" in capsys.readouterr().err
+
+    def test_all_calendars_failing_records_the_reason(
+        self, client, caldav_server, fake_calendar, uploads
+    ):
+        caldav_server.calendars_list = [fake_calendar("Work", error=TimeoutError("slow"))]
+
+        assert client.get("/api/sync").status_code == 500
+
+        assert ics_uploads(uploads) == []
+        [status] = status_uploads(uploads)
+        assert status == {**status, "ok": False, "error": "All 1 calendars failed to load (TimeoutError)"}
+
+    def test_status_never_contains_ics_url_or_credentials(self, client, uploads, fake_env):
+        client.get("/api/sync")
+
+        [call] = [c for c in uploads if c["path"].endswith(sync.STATUS_SUFFIX)]
+        text = call["data"].decode()
+        for secret in [FAKE_ICS_URL, *fake_env.values()]:
+            assert secret not in text
+
+    def test_status_upload_failure_does_not_change_the_result(
+        self, client, monkeypatch, uploads
+    ):
+        real_put_blob = sync.put_blob
+
+        def put_blob(path, data, **kwargs):
+            if path.endswith(sync.STATUS_SUFFIX):
+                raise RuntimeError("blob down")
+            return real_put_blob(path, data, **kwargs)
+
+        monkeypatch.setattr(sync, "put_blob", put_blob)
+
+        response = client.get("/api/sync")
+
+        assert response.status_code == 200
+        assert len(ics_uploads(uploads)) == 1
+
+    def test_without_blob_path_no_status_is_written(self, client, monkeypatch, uploads):
+        monkeypatch.delenv("BLOB_PATH")
+
+        assert client.get("/api/sync").status_code == 500
+        assert uploads == []
+
+
+class TestCaldavLogging:
+    def test_ical_fixup_warning_is_dropped(self, caplog):
+        with caplog.at_level(logging.WARNING, logger="caldav"):
+            logging.getLogger("caldav").warning(
+                "Ical data was modified to avoid compatibility issues\nSUMMARY:Private"
+            )
+            logging.getLogger("caldav").warning("Some other caldav warning")
+
+        messages = [record.getMessage() for record in caplog.records]
+        assert messages == ["Some other caldav warning"]
+
+
 # --- /api/sync: optional CRON_SECRET -----------------------------------------
 
 CRON_SECRET = "test-cron-secret"
@@ -398,13 +533,13 @@ class TestCronSecret:
         response = getattr(client, method)("/api/sync")
 
         assert response.status_code == 200
-        assert len(uploads) == 1
+        assert len(ics_uploads(uploads)) == 1
 
     def test_empty_cron_secret_counts_as_unset(self, client, monkeypatch, uploads):
         monkeypatch.setenv("CRON_SECRET", "")
 
         assert client.get("/api/sync").status_code == 200
-        assert len(uploads) == 1
+        assert len(ics_uploads(uploads)) == 1
 
     @pytest.mark.parametrize("method", ["get", "post"])
     @pytest.mark.parametrize(
@@ -428,6 +563,7 @@ class TestCronSecret:
         assert response.status_code == 401
         assert response.get_json() == {"status": "error", "message": "Unauthorized"}
         assert caldav_server.connections == []
+        # Nothing at all, not even a status file
         assert uploads == []
 
     @pytest.mark.parametrize("method", ["get", "post"])
@@ -439,7 +575,7 @@ class TestCronSecret:
         )
 
         assert response.status_code == 200
-        assert len(uploads) == 1
+        assert len(ics_uploads(uploads)) == 1
 
     def test_unauthorized_response_does_not_leak_the_secret(self, client, with_secret):
         response = client.get("/api/sync", headers={"Authorization": "Bearer nope"})
