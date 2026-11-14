@@ -6,16 +6,22 @@ frontend, Python/Flask function as the backend. It must work with any CalDAV ser
 
 ## Layout
 
-- `api/sync.py`: Flask app, deployed as the Vercel Python function `/api/sync`. Fetches
-  every CalDAV object, keeps VEVENTs, folds cancelled recurrence overrides into EXDATEs,
-  adds missing VTIMEZONEs and uploads one ICS with `put_blob`. After every authorized
-  attempt it also writes `<BLOB_PATH>.status.json` (time, ok, short error reason, skipped
-  calendars; never URLs or calendar data). If every calendar fails to load it raises
-  instead of uploading an empty ICS.
-- `app/`: Next.js page showing the last sync time (from Blob `list()` metadata), the last
-  failed attempt or an overdue warning (from the status file, read server-side only), and a
-  Sync Now button.
-- `vercel.json`: daily cron (`0 0 * * *`) calling `/api/sync`.
+- `api/sync.py`: Flask app, deployed as a private Vercel Python function. Fetches every
+  CalDAV object, keeps VEVENTs, folds cancelled recurrence overrides into EXDATEs, adds
+  missing VTIMEZONEs and uploads one ICS with `put_blob`. If every calendar fails to load
+  it raises instead of uploading an empty ICS. It answers POST on any path, because the
+  path of the scheduler's request isn't documented.
+- `vercel.json`: gives `api/sync.py` a `schedule/v1beta` trigger, which makes it private
+  (no public URL, only Vercel's scheduler can invoke it, so there is no secret), and
+  defines the `sync` schedule that runs it hourly.
+- `app/`: Next.js page showing the last sync time (from Blob `list()` metadata, in
+  `app/lastSync.js`), an overdue warning after 3 hours without an upload, and a Sync Now
+  button. The button calls the server action in `app/actions.js`, which asks the scheduler
+  to run the `sync` schedule now through `@vercel/schedules` (authenticated by the
+  deployment's OIDC token) and returns once the run is accepted. It refuses when the ICS
+  was uploaded in the last 10 minutes; a failed sync uploads nothing, so it can be retried
+  at once. Under `pnpm run dev` there is no scheduler, so the action posts to the local
+  Flask server instead.
 - `.env.example` and the README "Run Locally" table: every env var the code reads.
 
 ## Commands
@@ -47,16 +53,14 @@ requests.
 - **Secrets**: never print env var values or put credentials, real calendar data or an ICS
   URL in code, logs, commits, issues or PRs. The ICS URL is secret, since an unguessable
   `BLOB_PATH` is its only protection: it is printed to the function logs and never returned
-  by `/api/sync`.
-- Don't run `/api/sync` or `sync_caldav_to_blob()` with real credentials from a session; it
-  overwrites the configured Blob file.
+  by the sync function.
+- Don't run a sync (`sync_caldav_to_blob()`, the Flask app or Sync Now) with real
+  credentials from a session; it overwrites the configured Blob file.
 - Keep `cache_control_max_age=60` on the Blob upload; without it Blob serves the file with
   a 30-day cache.
-- `CRON_SECRET` is optional and both modes must keep working: unset (or empty) means
-  `/api/sync` is open; set means it requires `Authorization: Bearer <CRON_SECRET>`, which
-  Vercel cron sends automatically. The page then shows Sync Now as a password form
-  (`current-password` plus a hidden `username` field) so browsers can save and autofill
-  the secret; it is never stored by the app itself.
+- The sync function must stay private (the `schedule/v1beta` trigger in `vercel.json`):
+  nothing else protects it. Sync Now is open to anyone who can load the page, so keep the
+  cooldown in `app/actions.js`.
 - **pnpm only, never npm.** Only use dependency versions published at least one day ago
   (`minimumReleaseAge` in `pnpm-workspace.yaml`, `min-release-age` in `.npmrc`; for Python,
   check the PyPI upload date before raising a lower bound). `pnpm-lock.yaml` is gitignored,
