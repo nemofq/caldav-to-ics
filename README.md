@@ -15,9 +15,9 @@ The tool allows you to:
 - Upload/update to an ICS file on cloud storage (Vercel Blob in current code)
 - Get a URL to the ICS file and subscribe to it in Google Calendar or use scripts like [GAS-ICS-Sync](https://github.com/derekantrican/GAS-ICS-Sync)
 > *Note: The ICS URL is printed to the Vercel function logs after each sync. You can also copy it from the Blob store.*
-- Scheduled synchronization (currently runs once per day due to Vercel free tier limitations, configurable in `vercel.json`)
-- A simple interface to check last sync time and trigger manual synchronization
-- Records the result of every sync attempt in a small status file next to the ICS (`<BLOB_PATH>.status.json`: time, success or a short error reason, never URLs or calendar data), so the page can show a failed or missed run after the function logs have expired
+- Scheduled synchronization every hour with [Vercel Schedules](https://vercel.com/docs/schedules), configurable in `vercel.json`. Each run is listed in the schedule's execution history on Vercel
+- A simple interface to check last sync time and trigger manual synchronization. Sync Now asks the scheduler for an extra run; it is refused for 10 minutes after a successful sync, since anyone who can open the page can press it
+- The sync function is private: it has no public URL and only Vercel's scheduler can run it, so there is no secret to configure
 - If every calendar fails to load (e.g. the server times out), the sync fails instead of replacing the ICS with an empty one
 
 ![Screenshot of User Interface](https://github.com/user-attachments/assets/9bf0945d-006d-4fe4-b16c-c979358753fd)
@@ -37,18 +37,11 @@ For Lark/Feishu calendar users, you can retrieve CalDAV server details from sett
  | `CALDAV_URL` | CalDAV server url |
  | `CALDAV_USERNAME` | CalDAV server username |
  | `CALDAV_PASSWORD` | CalDAV server password |
- | `CRON_SECRET` | Optional. If set, `/api/sync` only accepts requests with `Authorization: Bearer <CRON_SECRET>` (see below) |
 
 The blob URL is public, so `BLOB_PATH` should be unguessable. Generate one and use the same value locally and on Vercel:
 
 ```bash
 echo "calendar-$(openssl rand -hex 16).ics"
-```
-
-`CRON_SECRET` is optional. Without it, anyone who knows your deployment URL can trigger a sync. With it, `/api/sync` returns 401 unless the request carries the secret: Vercel Cron sends it automatically, and the page asks for it in a password field next to Sync Now, which your browser's password manager can save and autofill. Generate one with:
-
-```bash
-openssl rand -hex 32
 ```
 
 - Install [uv](https://docs.astral.sh/uv/getting-started/installation/) for Python dependency management
@@ -65,13 +58,13 @@ pnpm run dev
 
 Open [http://localhost:3000](http://localhost:3000) in your browser to see the result.
 
-The Flask servers will provide API on `http://127.0.0.1:5328/api/sync` – feel free to change the port in `package.json` (you'll also need to update it in `next.config.js`).
+There is no scheduler locally, so Sync Now posts straight to the Flask server on `http://127.0.0.1:5328/api/sync` – feel free to change the port in `package.json` (you'll also need to update it in `app/actions.js`).
 
 ## Deploy to Vercel
 - Clone this repo and deploy on Vercel
 - Create a Blob store and connect it to the project — keep the 'Add a read-write token env var to this connection' option checked, so `BLOB_READ_WRITE_TOKEN` is set for you
 - Add Environment Variables in project settings: `BLOB_PATH` (the same value you generated above), `CALDAV_URL`, `CALDAV_USERNAME` and `CALDAV_PASSWORD`
-- Optionally add `CRON_SECRET` (recommended) to stop others from triggering syncs; the daily cron keeps working because Vercel sends it automatically
+- Vercel Schedules is in beta: the deployment fails if it isn't enabled for your team yet
 - Enable 'Fluid Compute' in the 'Functions' section of project settings to receive up to 300s of max duration for syncing larger calendars
 - Re-deploy and visit project domain to see the result
 

@@ -12,6 +12,7 @@
   },
   "dependencies": {
     "@vercel/blob": "^2.8.2",
+    "@vercel/schedules": "^0.0.3",
     "concurrently": "^10.0.7",
     "next": "^16.4.5",
     "react": "^19.3.1",

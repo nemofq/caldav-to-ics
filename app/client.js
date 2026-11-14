@@ -1,96 +1,30 @@
 'use client';
-import { useRef, useState } from 'react';
-import { useRouter } from 'next/navigation';
+import { useState } from 'react';
+import { startSync } from './actions';
 import { getRelativeTimeString } from './utils';
 
-// Hidden from view but still in the layout, so password managers associate
-// the saved credential with a username (display:none fields can be ignored)
-const visuallyHidden = {
-  position: 'absolute',
-  width: '1px',
-  height: '1px',
-  padding: 0,
-  margin: '-1px',
-  overflow: 'hidden',
-  clip: 'rect(0 0 0 0)',
-  whiteSpace: 'nowrap',
-  border: 0,
-};
-
-export default function ClientHome({
-  lastModified,
-  isOverdue = false,
-  status = null,
-  authRequired = false,
-}) {
+export default function ClientHome({ lastModified, isOverdue = false }) {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState(null);
-  const [isSynced, setIsSynced] = useState(false);
-  // With CRON_SECRET set, /api/sync needs "Authorization: Bearer <secret>".
-  // The secret is typed (or autofilled) into a real form so the browser's
-  // password manager can save it; this page never stores it anywhere.
-  const [showSecretForm, setShowSecretForm] = useState(authRequired);
-  const secretInput = useRef(null);
-  const router = useRouter();
-
-  // Returns 'ok', 'unauthorized' or 'error'
-  const requestSync = async (secret) => {
-    setIsLoading(true);
-    setError(null);
-    setIsSynced(false);
-
-    try {
-      const response = await fetch('/api/sync', {
-        method: 'POST',
-        headers: secret ? { Authorization: `Bearer ${secret}` } : {},
-      });
-
-      if (response.status === 401) return 'unauthorized';
-
-      // A crashed function returns Vercel's HTML error page, not JSON
-      const isJson = response.headers.get('content-type')?.includes('application/json');
-      const data = isJson ? await response.json() : null;
-
-      if (!response.ok) {
-        throw new Error(data?.message || `HTTP ${response.status}`);
-      }
-
-      setIsSynced(true);
-      router.refresh();
-      return 'ok';
-
-    } catch (err) {
-      setError(err.message);
-      return 'error';
-    } finally {
-      setIsLoading(false);
-    }
-  };
+  const [isStarted, setIsStarted] = useState(false);
 
   const handleSync = async () => {
-    if (authRequired) {
-      setShowSecretForm(true);
-      return;
-    }
-    // Server didn't say a secret is needed, but it may still ask for one
-    if (await requestSync() === 'unauthorized') {
-      setShowSecretForm(true);
-    }
-  };
+    setIsLoading(true);
+    setError(null);
+    setIsStarted(false);
 
-  const handleSecretSubmit = async (event) => {
-    event.preventDefault();
-    const input = secretInput.current;
-    const result = await requestSync(input.value);
-
-    if (result === 'ok') {
-      // Clearing and removing the form after a successful submit is what
-      // password managers treat as a successful sign-in, so they offer to save
-      input.value = '';
-      setShowSecretForm(false);
-    } else if (result === 'unauthorized') {
-      setError('Wrong CRON_SECRET');
-      input.select();
+    try {
+      const startError = await startSync();
+      if (startError) {
+        setError(startError);
+      } else {
+        setIsStarted(true);
+      }
+    } catch {
+      // The request never reached the server action
+      setError('Could not reach the server');
+    } finally {
+      setIsLoading(false);
     }
   };
 
@@ -98,7 +32,7 @@ export default function ClientHome({
     padding: '0.75rem 1.5rem',
     borderRadius: '6px',
     border: 'none',
-    backgroundColor: isSynced ? '#000' : '#333',
+    backgroundColor: isStarted ? '#000' : '#333',
     color: 'white',
     cursor: isLoading ? 'not-allowed' : 'pointer',
     opacity: isLoading ? 0.7 : 1,
@@ -107,25 +41,17 @@ export default function ClientHome({
     minWidth: '120px',
   };
 
-  const buttonLabel = isLoading ? 'Syncing...' : isSynced ? 'Synced' : 'Sync Now';
+  const buttonLabel = isLoading ? 'Starting...' : isStarted ? 'Sync started' : 'Sync Now';
 
   const formattedTime = lastModified ? getRelativeTimeString(lastModified) : 'Never';
-  // Ignore a failure older than the last good upload (its status write failed)
-  const lastAttemptFailed = Boolean(status) && !status.ok && !(
-    lastModified && status.attemptedAt && new Date(status.attemptedAt) < new Date(lastModified)
-  );
 
+  // The sync runs in the background, so its result shows up on a later visit
   let statusNote = null;
-  if (lastAttemptFailed) {
-    const when = status.attemptedAt ? getRelativeTimeString(status.attemptedAt) : 'recently';
-    statusNote = `Last attempt ${when} failed: ${status.error || 'unknown error'}`;
+  if (isStarted) {
+    statusNote = 'Reload this page in a minute or two to see the new time.';
   } else if (isOverdue) {
-    statusNote = 'No sync attempt since then. Check that the scheduled job ran.';
-  } else if (status?.skippedCalendars > 0) {
-    const n = status.skippedCalendars;
-    statusNote = `${n} calendar${n === 1 ? ' was' : 's were'} skipped on the last sync`;
+    statusNote = "No sync since then. Check the schedule's runs in the Vercel dashboard.";
   }
-  const statusNoteIsWarning = lastAttemptFailed || isOverdue;
 
   return (
     <main style={{
@@ -157,63 +83,15 @@ export default function ClientHome({
       {statusNote && (
         <p style={{
           fontSize: '0.95rem',
-          color: statusNoteIsWarning ? '#c00' : '#666',
+          color: isStarted ? '#666' : '#c00',
           margin: 0,
           maxWidth: '80%',
           textAlign: 'center',
         }}>{statusNote}</p>
       )}
-      {showSecretForm ? (
-        // method="post" keeps the secret out of the URL if the form is
-        // submitted before the page's JavaScript has loaded
-        <form
-          method="post"
-          onSubmit={handleSecretSubmit}
-          style={{
-            display: 'flex',
-            flexDirection: 'column',
-            alignItems: 'center',
-            gap: '0.75rem',
-          }}
-        >
-          <input
-            type="text"
-            name="username"
-            autoComplete="username"
-            value="cron"
-            readOnly
-            tabIndex={-1}
-            aria-hidden="true"
-            style={visuallyHidden}
-          />
-          <label htmlFor="cron-secret" style={{ fontSize: '1rem', color: '#333' }}>
-            CRON_SECRET
-          </label>
-          <input
-            id="cron-secret"
-            ref={secretInput}
-            type="password"
-            name="password"
-            autoComplete="current-password"
-            required
-            style={{
-              padding: '0.6rem 0.75rem',
-              borderRadius: '6px',
-              border: '1px solid #ccc',
-              fontSize: '1rem',
-              width: '16rem',
-              maxWidth: '100%',
-            }}
-          />
-          <button type="submit" disabled={isLoading} style={buttonStyle}>
-            {buttonLabel}
-          </button>
-        </form>
-      ) : (
-        <button onClick={handleSync} disabled={isLoading} style={buttonStyle}>
-          {buttonLabel}
-        </button>
-      )}
+      <button onClick={handleSync} disabled={isLoading} style={buttonStyle}>
+        {buttonLabel}
+      </button>
       {error && (
         <p style={{ 
           color: '#ff0000', 

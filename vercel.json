@@ -1,8 +1,14 @@
 {
-  "crons": [
-    {
-      "path": "/api/sync",
-      "schedule": "0 0 * * *"
+  "$schema": "https://openapi.vercel.sh/vercel.json",
+  "functions": {
+    "api/sync.py": {
+      "experimentalTriggers": [{ "type": "schedule/v1beta" }]
     }
-  ]
+  },
+  "schedules": {
+    "sync": {
+      "schedule": "0 * * * *",
+      "function": "api/sync"
+    }
+  }
 }

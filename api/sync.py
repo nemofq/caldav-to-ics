@@ -1,30 +1,17 @@
-import hmac
-import json
 import logging
 import os
 import sys
 import traceback
-from datetime import datetime, timezone
 from dotenv import load_dotenv
 from caldav import DAVClient
 from icalendar import Calendar
 from vercel.blob.sync import put_blob
-from flask import Flask, jsonify, request
+from flask import Flask, jsonify
 
 app = Flask(__name__)
 
 # load local env
 load_dotenv('.env.local')
-
-# Next to the ICS, at BLOB_PATH + this suffix, every authorized sync attempt
-# records its outcome, so a missed or failed run stays visible on the status
-# page after the function logs have expired.
-STATUS_SUFFIX = ".status.json"
-
-
-class SyncError(Exception):
-    """A sync failure whose message is safe to publish in the status file."""
-
 
 class _DropIcalFixupWarnings(logging.Filter):
     """Drop caldav's "Ical data was modified" warning.
@@ -146,7 +133,7 @@ def sync_caldav_to_blob():
     if calendar_count and failed_calendars == calendar_count:
         # Exception type names only: messages can carry the CalDAV URL
         reasons = ", ".join(sorted(failure_types))
-        raise SyncError(f"All {calendar_count} calendars failed to load ({reasons})")
+        raise RuntimeError(f"All {calendar_count} calendars failed to load ({reasons})")
 
     event_count -= fold_cancelled_overrides(combined_calendar)
 
@@ -172,8 +159,8 @@ def sync_caldav_to_blob():
         allow_overwrite=True,
     )
 
-    # Logged, never returned: /api/sync is unauthenticated, so the response
-    # body must not carry the secret ICS URL. Function logs are owner-only.
+    # Logged, never returned: the ICS URL is secret, and function logs are
+    # owner-only.
     print(f"Uploaded ICS to {uploaded.url}")
 
     result = {
@@ -184,79 +171,23 @@ def sync_caldav_to_blob():
         result["skipped_calendars"] = failed_calendars
     return result
 
-def record_status(ok, error=None, skipped_calendars=0):
-    """Upload the outcome of this sync attempt next to the ICS.
-
-    Holds only a time, a flag, a count and a short reason that never
-    contains URLs, credentials or calendar data. Failures here are logged and
-    swallowed, so they never change the sync's own result.
-    """
-    blob_path = os.environ.get("BLOB_PATH")
-    if not blob_path:
-        return
-    status = {
-        "attempted_at": datetime.now(timezone.utc).isoformat(),
-        "ok": ok,
-        "error": error,
-        "skipped_calendars": skipped_calendars,
-    }
-    try:
-        put_blob(
-            blob_path + STATUS_SUFFIX,
-            json.dumps(status).encode(),
-            access="public",
-            content_type="application/json",
-            add_random_suffix=False,
-            cache_control_max_age=60,
-            allow_overwrite=True,
-        )
-    except Exception:
-        print("Error recording sync status:", file=sys.stderr)
-        traceback.print_exc()
-
-def public_reason(error):
-    """A short failure reason that is safe to publish: no URLs or data."""
-    if isinstance(error, SyncError):
-        return str(error)
-    # Library messages can carry the CalDAV URL, so only the type is kept
-    return type(error).__name__
-
-def is_authorized(req):
-    """Check the request against CRON_SECRET, if one is configured.
-
-    Without CRON_SECRET anyone can trigger a sync, as before. With it, the
-    request must carry "Authorization: Bearer <CRON_SECRET>", which Vercel
-    cron sends automatically when the variable is set on the project.
-    """
-    secret = os.environ.get("CRON_SECRET")
-    if not secret:
-        return True
-    expected = f"Bearer {secret}".encode()
-    provided = req.headers.get("Authorization", "").encode()
-    # Constant-time; bytes so a non-ASCII header is a mismatch, not an error
-    return hmac.compare_digest(provided, expected)
-
-# Handler for Vercel Serverless function
-@app.route("/api/sync", methods=['POST', 'GET'])
-def api_sync():
-    # Checked before anything else: an unauthorized request must not sync
-    if not is_authorized(request):
-        return jsonify({
-            "status": "error",
-            "message": "Unauthorized"
-        }), 401
-
+# On Vercel this function is private: vercel.json gives it a schedule trigger,
+# so only the scheduler can invoke it, on the hourly schedule or when Sync Now
+# asks for a run. The path of the scheduler's request isn't documented, so any
+# path is accepted.
+@app.route("/", defaults={"path": ""}, methods=["POST"])
+@app.route("/<path:path>", methods=["POST"])
+def api_sync(path):
     try:
         result = sync_caldav_to_blob()
     except Exception as e:
-        # stderr shows up as an error in the Vercel logs
+        # stderr shows up as an error in the Vercel logs, and the 500 marks
+        # the run as failed
         print("Sync failed:", file=sys.stderr)
         traceback.print_exc()
-        record_status(False, error=public_reason(e))
         return jsonify({
             "status": "error",
             "message": str(e)
         }), 500
 
-    record_status(True, skipped_calendars=result.get("skipped_calendars", 0))
     return jsonify(result), 200
