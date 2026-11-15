@@ -11,17 +11,17 @@
     "lint": "eslint"
   },
   "dependencies": {
-    "@vercel/blob": "^2.8.2",
+    "@vercel/blob": "^2.9.0",
     "@vercel/schedules": "^0.0.3",
     "concurrently": "^10.0.7",
-    "next": "^16.4.5",
+    "next": "^16.4.6",
     "react": "^19.3.1",
     "react-dom": "^19.3.1",
     "sharp": "^0.35.5"
   },
-  "packageManager": "pnpm@12.18.0",
+  "packageManager": "pnpm@12.21.0",
   "devDependencies": {
     "eslint": "^9.39.5",
-    "eslint-config-next": "^16.4.5"
+    "eslint-config-next": "^16.4.6"
   }
 }
