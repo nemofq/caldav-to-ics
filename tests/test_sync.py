@@ -1,9 +1,12 @@
 """Tests for api/sync.py: cancelled-occurrence folding, VTIMEZONEs and ICS building."""
+import inspect
 import logging
+import typing
 from datetime import date
 
 import pytest
 from icalendar import Calendar
+from vercel.blob.sync import put_blob as real_put_blob
 
 import sync
 from conftest import FAKE_ENV, FAKE_ICS_URL
@@ -357,6 +360,28 @@ class TestSyncUpload:
 
         assert caldav_server.connections == []
         assert uploads == []
+
+
+# --- installed vercel-blob ----------------------------------------------------
+
+
+class TestInstalledBlobLibrary:
+    """The other tests replace put_blob with a recorder, so they keep passing
+    when a vercel-blob release renames or drops an argument. These check the
+    call sync.py makes against the installed library, without uploading."""
+
+    def test_real_put_blob_accepts_the_arguments_sync_passes(self, uploads):
+        sync.sync_caldav_to_blob()
+        call = dict(uploads[0])
+        path, data = call.pop("path"), call.pop("data")
+
+        # Raises TypeError on an unknown, renamed or missing argument
+        inspect.signature(real_put_blob).bind(path, data, **call)
+
+    def test_real_put_blob_result_has_the_url_sync_logs(self):
+        result_type = typing.get_type_hints(real_put_blob)["return"]
+
+        assert "url" in typing.get_type_hints(result_type)
 
 
 # --- sync route ---------------------------------------------------------------
